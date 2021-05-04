@@ -1,0 +1,3 @@
+# Heart-Attack-Analysis
+Heart Attack Analysis &amp; Prediction Analysis
+Heart disease is the leading cause of death for men, women, and people of most racial and ethnic groups. One person dies every 36 seconds in the United States from cardiovascular disease. About 655,000 Americans die from heart disease each year—that's 1 in every 4 deaths. The goal of this project is to find out which factors influences the chances of getting a heart attack. I will be using Heart Attack Analysis & Prediction Dataset, which is a dataset for heart attack classification from kaggle. In addition i'll be using the following classification technique Decision Tree, to provide further analysis of which factors influence heart attacks.
