@@ -1,0 +1,335 @@
+---
+title: "HeartAttack Prediction"
+author: "Ajanthan"
+date: "01/05/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(car)
+library(dplyr)
+library(spida2)
+library(ggplot2)
+library(pROC)
+library(mosaic)
+library(gridExtra)
+library(GGally)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+```
+
+# Heart Attack Analysis and Predictive Analysis
+
+## Introduction
+
+Heart disease is the leading cause of death for men, women, and people of most racial and ethnic groups. One person dies every 36 seconds in the United States from cardiovascular disease. About 655,000 Americans die from heart disease each year—that's 1 in every 4 deaths. The goal of this project is to find out which factors influences the chances of getting a heart attack. I will be using Heart Attack Analysis & Prediction Dataset, which is a dataset for heart attack classification from kaggle. In addition i'll be using the following classification technique Decision Tree, to provide further analysis of which factors influence heart attacks.
+
+### Description of Dataset
+
+Age : Age of the patient
+
+Sex : Sex of the patient
+
+exng: exercise induced angina (1 = yes; 0 = no)
+
+caa: number of major vessels (0-3)
+
+cp : Chest Pain type chest pain type
+
+  Value 1: typical angina
+  Value 2: atypical angina
+  Value 3: non-anginal pain
+  Value 4: asymptomatic
+
+trtbps : resting blood pressure (in mm Hg)
+
+chol : cholestoral in mg/dl fetched via BMI sensor
+
+fbs : (fasting blood sugar > 120 mg/dl) (1 = true; 0 = false)
+
+rest_ecg : resting electrocardiographic results
+  Value 0: normal
+  Value 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of > 0.05 mV)
+  Value 2: showing probable or definite left ventricular hypertrophy by Estes' criteria
+
+thalach : maximum heart rate achieved
+
+oldpeak: ST depression induced by exercise relative to rest
+
+slp: the slope of the peak exercise ST segment (0 = upsloping; 1 = flat; 2 = downsloping)
+
+thall: 1 = normal; 2 = fixed defect; 3 = reversable defect
+
+target : 0= less chance of heart attack 1= more chance of heart attack
+
+Here is a sample of the first 5 rows of the data
+
+```{r, echo = FALSE}
+heart <- read.csv("C:/Users/Ajanthan/Desktop/Heartattack Data Set/heart.csv")
+head(heart, 5)
+```
+Here is the data types of the data set
+```{r, echo=FALSE}
+str(heart)
+```
+
+According to our dataset target which is output is our independant variable. We will use logistic regression since we are dealing with a categorical variable. We will also build two models one model which is a additative model and another model which includes interactions. We will evaluate both models performance and choose the best fitting model for further analysis.
+
+## Cleaning The Dataset
+
+Based on the data set we have qualititave dependent variables and a qualitative independent variable so lets factor the qualitative variables and relable them so they have meaningful names in the dataset to make it easier reading the data when analyzing the data. 
+
+```{r, echo=FALSE}
+
+newheart<- heart
+newheart$sex <- factor(newheart$sex, levels = c(1,0), labels = c('M', 'F'))
+newheart$exng <- factor(newheart$exng, levels = c(1,0), labels = c('Yes', "No"))
+newheart$cp<- factor(newheart$cp, levels = c(0,1,2,3), labels = c('typical angina', "atypical angina", "non-anginal pain", "asymptomatic"))
+newheart$fbs<- factor(newheart$fbs, levels = c(1,0), labels = c('true', 'false'))
+newheart$restecg<- factor(newheart$restecg, levels = c(0,1,2), labels = c("normal", "ST-T wave abnormality", "left ventricular hypertrophy"))
+newheart$slp<- factor(newheart$slp, levels = c(0,1,2), labels = c("upsloping", "flat", "downsloping"))
+newheart$output<-factor(newheart$output, levels = c(0,1), labels = c("Less Chance", "More Chance"))
+newheart$thall<- factor(newheart$thall, levels = c(1,2,3), labels = c("normal", "fixed defect", "reversable defect"))
+
+
+head(newheart,5)
+```
+Here is a basic summary of the factored data set
+```{r, echo=FALSE}
+str(newheart)
+summary(newheart)
+```
+removing the NA's from the dataset 
+
+```{r, echo = FALSE}
+newheart<-na.omit(newheart)
+summary(newheart)
+```
+
+
+# Data Preperation
+
+## Correlation
+
+Lets see if there is any form of multicollinearity in the dataset by looking at the correlation plot of the data
+
+```{r, echo = FALSE}
+ggcorr(heart, low = "steelblue", mid = "white", high = "darkred")
+```
+By looking at the following figure we can see that there is high correlation between the predictors cp, thalach and slp to tell whether or not a patient has a higher chance of a heart attack or less chance of a heart attack. This makes sense because cp is the type of chest pain, thalach the maximum heart rate achieved and slp the slope of the heart rate. These are major factors that help distinguish whether a patient is more likely or less likely to have a hearth attack. We can also see that there is some aspects of multicollinearity in the model for there shows high significants amongst other predictors such as age and trtbps, cp and thalachh, thalach and slp, etc. These factors must be taken into account when building the model. 
+
+## Data visualization 
+
+Lets use bar graphs to visualize the effects of the predictors on the independent variable output. 
+
+```{r, echo = FALSE}
+heart_age <- table(newheart$output, newheart$age)
+barplot(heart_age, main = "Heart Attack ~ Age", xlab = "Age", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+As the age increases we can see the chances of having a heart attack increases. 
+
+```{r, echo = FALSE}
+heart_sex <- table(newheart$output, newheart$sex)
+barplot(heart_sex, main = "Heart Attack ~ sex", xlab = "sex (Male / Female)", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+We can see most of the patients in the data set is male compared to females. The ratio of having a heart attack for males for having a higher chance of having a heart attack to a lower chance if having a heart attack is less than the ratio for females. 
+
+```{r, echo = FALSE}
+heart_exng <- table(newheart$output, newheart$exng)
+barplot(heart_exng, main = "Heart Attack ~ exng", xlab = "Exercise included agnia", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+We can see that for patients who experience chest pain during exercise has a less chance of having a heart attack for patients who experienced chest pain when they were not exercising. 
+
+```{r, echo = FALSE}
+heart_cp <- table(newheart$output, newheart$cp)
+barplot(heart_cp, main = "Heart Attack ~ Chest Pain", xlab = "types of chest pain", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+
+We can see patients who experienced non-anginal pain in there chest have more chance of a heart attack than patients who experienced typical chest pains. Therefore non-anginal pain in the chest is a significant factor to having a higher chance of heart attack. 
+
+```{r, echo = FALSE}
+heart_fbs <- table(newheart$output, newheart$fbs)
+barplot(heart_fbs, main = "Heart Attack ~ Fasting blood sugar", xlab = "fasting blood sugar", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+
+We can see that if the fasting blood sugar is less than 120 mg/dl, there is more of a chance of having a heart attack compared to someone with fasting blood sugar greater than 120 mg/dl. 
+
+```{r, echo = FALSE}
+heart_restecg <- table(newheart$output, newheart$restecg)
+barplot(heart_restecg, main = "Heart Attack ~ resting electrocardiographic ", xlab = "types of resting electrocardiographic", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+
+We can see patients who's resting electrocardiographic is showing forms of ST-T wave abnormality have a higher chance of having a heart attack compared to patients who show left venticular hypertrophy. Having a normal reading doesn't give enough information of whether the patient has a higher chance of having a heart to less of chance because the ratio of more chance to less chance of having a heart attack is one to one.
+
+```{r, echo = FALSE}
+heart_slp <- table(newheart$output, newheart$slp)
+barplot(heart_slp, main = "Heart Attack ~ slope", xlab = "types of slopes", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+We can see if the slope of the cardiactric machine is downwards slopping there it shows that there is more of a chance to have a heartattack compared to seeing a upward slope or a flat slope on the machine. 
+
+```{r, echo = FALSE}
+heart_thall <- table(newheart$output, newheart$thall)
+barplot(heart_thall, main = "Heart Attack ~ defects", xlab = "types of defects", ylab = "More chance of HA / Less Chance of HA", col = c("green", "red"), legend = TRUE)
+```
+We can see that if it is a fixed defect there is more chance of a heart attack to occur compared to a reversable defect or a normal defect.
+
+##Model Selection 
+### Additative Model
+Based on the data set lets first evaluate the additative model
+
+```{r, echo = FALSE}
+model1 <- glm(output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + oldpeak + slp + caa + thall, data = newheart, family = 'binomial')
+summary(model1)
+k<-with(summary(model1), 1-deviance/null.deviance)
+print(paste('R-squared:', k))
+```
+
+## Wald Test Evaluation 
+
+This is the Wald test for additative model. A wald test is conducted in logistic regression is to check whether a predictor is significant or not. From looking at the wald test we see that some of the p-values are high which indicates that there are some varaibles that are not significant to the model. Doing a quick glance we see that age, fbs, and restec at the left verticular hypertrophy has high p-values showing that they are insignificant to the model. This doesnt mean we should drop them right away, we shall do further analysis on the model to get a clearer idea on whether or not these variables are significant to showing the patient has a lower or higher chance of getting a heart attack. 
+```{r, echo = FALSE}
+wald(model1)
+```
+## Stepwise Regression 
+Stepwise regression is a modification of the forward selection so that after each step in which a variable was added, all candidate variables in the model are checked to see if their significance has been reduced below the specified tolerance level. If a nonsignificant variable is found, it is removed from the model.
+Applying stepwise regression both backward and forward leaves us with output ~ sex + cp + trtbps + chol + thalachh + exng + oldpeak + slp + caa + thall
+```{r, echo = FALSE}
+step(model1, direction = c("both"))
+```
+## Model with interactions
+
+```{r, echo = FALSE}
+model2<- glm(formula = output ~ age + sex + cp + trtbps + chol + fbs + 
+    restecg + thalachh + exng + oldpeak + slp + caa + thall + age*sex + age*cp  + trtbps*age + chol*age + fbs*age + exng*age + sex*chol + chol*cp + chol*fbs + chol*exng, 
+    family = "binomial", data = newheart)
+summary(model2)
+q<-with(summary(model2), 1-deviance/null.deviance)
+print(paste('R-squared:', q))
+```
+### Wald test for interactive model
+
+```{r, echo = FALSE}
+wald(model2)
+```
+
+Stepwise regression for model with interactions
+```{r, echo = FALSE}
+step(model2, direction = c("both"))
+```
+
+## Model Comparision 
+
+I noticed when adding interactions to the model the significance of the variables in the model became less effective. We can see this by looking at the both the p-values in the wald test. All the p-values for the model with interactions are significantly more higher than the additative model. We can also see that When running step wise regression on the model with interactions. It eliminated all the interaction terms because they were insigificant to the model and gave us back the additative model. This is telling us that the additative model will be more viable to use for the analysis. Thus after evaluating both models we will stick with the additative model for further analysis. 
+
+```{r, echo = FALSE}
+model1<-glm(formula = output ~ sex + cp + trtbps + chol + thalachh + 
+    exng + oldpeak + slp + caa + thall, family = "binomial", 
+    data = newheart)
+
+t<-with(summary(model1), 1-deviance/null.deviance)
+print(paste('R-squared:', t))
+
+```
+
+
+#Model evaluation 
+
+## VIF 
+Since our selected model is the additative model we can now use the model to answer the question. Which predictor influences the factors of having a heart attack. 
+As metioned before during the correlation test we notice there was some aspects of multicollinearity in the dataset. Lets check the VIF of the additative model. In statistics, the variance inflation factor is the quotient of the variance in a model with multiple terms by the variance of a model with one term alone. It quantifies the severity of multicollinearity in an ordinary least squares regression analysis
+
+```{r, echo = FALSE}
+model1<-glm(formula = output ~ sex + cp + trtbps + chol + thalachh + 
+    exng + oldpeak + slp + caa + thall, family = "binomial", 
+    data = newheart)
+
+vif(model1)
+```
+
+Since the VIF score of our predictors are less than 10. There is no aspects of multicollinearity in our model. 
+
+#Model Analysis
+
+## ROC Curve for Logistic Regression
+
+The ROC curve shows the trade-off between sensitivity (or TPR) and specificity (1 – FPR). Classifiers that give curves closer to the top-left corner indicate a better performance. As a baseline, a random classifier is expected to give points lying along the diagonal (FPR = TPR). The closer the curve comes to the 45-degree diagonal of the ROC space, the less accurate the test. To compare different classifiers, it can be useful to summarize the performance of each classifier into a single measure. One common approach is to calculate the area under the ROC curve, which is abbreviated to AUC
+
+```{r, echo = FALSE}
+set.seed(123)
+id <- sample(nrow(newheart), 0.8*nrow(newheart))
+train <- newheart[id,]
+test <- newheart[-id,]
+```
+
+```{r, echo = FALSE}
+pred <- predict(model1, train, type = 'response')
+pred2 <- predict(model1, test, type = "response")
+```
+
+
+
+```{r, echo = FALSE}
+modelROC<- roc(train$output, pred)
+plot(modelROC, print.auc = TRUE, auc.polygon = TRUE, grid = c(0.1,0.2)
+     , grid.col = c("green", "red"), max.auc.ploygon = TRUE, auc.polygon.col = "skyblue", print.thres = TRUE)
+```
+The AUC on training set is 0.918 which is approximately 92%, This is an indication that the model prediction performance is good. 
+
+
+```{r, echo = FALSE}
+modelROC<- roc(test$output, pred2)
+plot(modelROC, print.auc = TRUE, auc.polygon = TRUE, grid = c(0.1,0.2)
+     , grid.col = c("green", "red"), max.auc.ploygon = TRUE, auc.polygon.col = "skyblue", print.thres = TRUE)
+
+```
+The AUC on testing set is 0.974 which is approximetly 97%. This is an indication that the model prediction performance is good. 
+
+Overall comparing the model performance on both the testing and training set we get similar performances which tells us that the model we have is able to classify whether the patient is highly in risk of having a heart attack or less in risk of having a heart attack, based on logistic regression. 
+
+# Decision Tree Classification
+We will use our aditative model for decision tree classification also. The Decision tree builds classification or regression models in the form of a tree structure. It breaks down a dataset into smaller and smaller subsets while at the same time an associated decision tree is incrementally developed. the Decision trees can handle both categorical and numerical data
+
+
+```{r}	
+fit <- rpart(output ~ sex + cp + trtbps + chol + thalachh + 
+    exng + oldpeak + slp + caa + thall , data = train, method = 'class')
+rpart.plot(fit, extra = 106)
+```
+At the top is the overal percentage of patients getting heart attacks. It shows the porportion of patients who have a higher chance of recieving a heart attack to patients having a less chance of recieving a heart attack. 53% of the patients have a higher chance of recieving a heart attack. You can keep going down the nodes to understand what features impact the chances of having a higher chance of a heart attack to having a less chance of having a heart attack. For example, if its a fixed defect and if the chest pain type is asymptomatic then there is a 91% chance of having a heart attack.  
+
+## Making A Prediction
+
+Accuracy of test set
+```{r}
+predict_unseen <-predict(fit, test, type = 'class')
+table_mat <- table(test$output, predict_unseen)
+table_mat
+```
+Confusion matrix of the patients who have more chance of a heart attack and the patients who have a less chance of a heart attack using the testing data set.
+```{r}
+accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+print(paste('Accuracy for test', accuracy_Test))
+```
+The accuracy of the testing set is approximatly 85%. Which is good because it tells us that 82% of the predictions made are correct based on the testing set.
+
+Accuracy of training set 
+```{r}
+predict_unseen1 <-predict(fit, train, type = 'class')
+table_mat1 <- table(train$output, predict_unseen1)
+table_mat1
+```
+
+```{r}
+accuracy_train <- sum(diag(table_mat1)) / sum(table_mat1)
+print(paste('Accuracy for train', accuracy_train))
+```
+The accuracy of the training set is approximatly 84%. This is good because it tells us that 84% of the predictions made are correct based on the training set. 
+
+#Conclusion 
+
+Comparing the performance of our model through logistic regression and using the decision tree method we can see that the model performs well to predict whether the patient is classified in having a higher chance of getting a heart attack to having a less chance of having a heart attack. We can also see that Logistic regression seems to be more viable since it has a higher chance of prediciting more or less chance of having a heart attack compared to the decision tree method. Finally, we see that the predictors that show the most influence  to our independant variable 'output' is sex, cp, trtbps, chol, thalachh, exng, oldpeak, slp, caa and the thall. Theoretically speaking this makes sense. Factors such as chest pain, cholesterol levels, etc, are related to heart attacks. Some recommendations that will probably improve the performance of the model is having more meaningful predictors in the data set for detecting heart attacks. 
+
