@@ -69,7 +69,7 @@ target : 0= less chance of heart attack 1= more chance of heart attack
 Here is a sample of the first 5 rows of the data
 
 ```{r, echo = FALSE}
-heart <- read.csv("C:/Users/Ajanthan/Desktop/Heartattack Data Set/heart.csv")
+heart <- read.csv("C:/Users/Ajanthan/Desktop/Self Projects/Heartattack Data Set/heart.csv")
 head(heart, 5)
 ```
 Here is the data types of the data set
@@ -177,7 +177,7 @@ barplot(heart_thall, main = "Heart Attack ~ defects", xlab = "types of defects",
 ```
 We can see that if it is a fixed defect there is more chance of a heart attack to occur compared to a reversable defect or a normal defect.
 
-##Model Selection 
+## Model Selection 
 ### Additative Model
 Based on the data set lets first evaluate the additative model
 
@@ -236,7 +236,7 @@ print(paste('R-squared:', t))
 ```
 
 
-#Model evaluation 
+# Model evaluation 
 
 ## VIF 
 Since our selected model is the additative model we can now use the model to answer the question. Which predictor influences the factors of having a heart attack. 
@@ -252,7 +252,7 @@ vif(model1)
 
 Since the VIF score of our predictors are less than 10. There is no aspects of multicollinearity in our model. 
 
-#Model Analysis
+# Model Analysis
 
 ## ROC Curve for Logistic Regression
 
@@ -286,7 +286,7 @@ plot(modelROC, print.auc = TRUE, auc.polygon = TRUE, grid = c(0.1,0.2)
      , grid.col = c("green", "red"), max.auc.ploygon = TRUE, auc.polygon.col = "skyblue", print.thres = TRUE)
 
 ```
-The AUC on testing set is 0.974 which is approximetly 97%. This is an indication that the model prediction performance is good. 
+The AUC on testing set is 0.943 which is approximetly 94%. This is an indication that the model prediction performance is good. 
 
 Overall comparing the model performance on both the testing and training set we get similar performances which tells us that the model we have is able to classify whether the patient is highly in risk of having a heart attack or less in risk of having a heart attack, based on logistic regression. 
 
@@ -294,7 +294,7 @@ Overall comparing the model performance on both the testing and training set we 
 We will use our aditative model for decision tree classification also. The Decision tree builds classification or regression models in the form of a tree structure. It breaks down a dataset into smaller and smaller subsets while at the same time an associated decision tree is incrementally developed. the Decision trees can handle both categorical and numerical data
 
 
-```{r}	
+```{r, echo = FALSE}	
 fit <- rpart(output ~ sex + cp + trtbps + chol + thalachh + 
     exng + oldpeak + slp + caa + thall , data = train, method = 'class')
 rpart.plot(fit, extra = 106)
@@ -304,32 +304,31 @@ At the top is the overal percentage of patients getting heart attacks. It shows 
 ## Making A Prediction
 
 Accuracy of test set
-```{r}
+```{r, echo = FALSE}
 predict_unseen <-predict(fit, test, type = 'class')
 table_mat <- table(test$output, predict_unseen)
 table_mat
 ```
 Confusion matrix of the patients who have more chance of a heart attack and the patients who have a less chance of a heart attack using the testing data set.
-```{r}
+```{r, echo = FALSE}
 accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
 print(paste('Accuracy for test', accuracy_Test))
 ```
-The accuracy of the testing set is approximatly 85%. Which is good because it tells us that 82% of the predictions made are correct based on the testing set.
 
 Accuracy of training set 
-```{r}
+```{r, echo = FALSE}
 predict_unseen1 <-predict(fit, train, type = 'class')
 table_mat1 <- table(train$output, predict_unseen1)
 table_mat1
 ```
 
-```{r}
+```{r, echo = FALSE}
 accuracy_train <- sum(diag(table_mat1)) / sum(table_mat1)
 print(paste('Accuracy for train', accuracy_train))
 ```
-The accuracy of the training set is approximatly 84%. This is good because it tells us that 84% of the predictions made are correct based on the training set. 
 
-#Conclusion 
 
-Comparing the performance of our model through logistic regression and using the decision tree method we can see that the model performs well to predict whether the patient is classified in having a higher chance of getting a heart attack to having a less chance of having a heart attack. We can also see that Logistic regression seems to be more viable since it has a higher chance of prediciting more or less chance of having a heart attack compared to the decision tree method. Finally, we see that the predictors that show the most influence  to our independant variable 'output' is sex, cp, trtbps, chol, thalachh, exng, oldpeak, slp, caa and the thall. Theoretically speaking this makes sense. Factors such as chest pain, cholesterol levels, etc, are related to heart attacks. Some recommendations that will probably improve the performance of the model is having more meaningful predictors in the data set for detecting heart attacks. 
+# Conclusion 
+
+Comparing the performance of our model through logistic regression and using the decision tree method we can see that the model performs well to predict whether the patient is classified in having a higher chance of getting a heart attack to having a less chance of having a heart attack. We can also see that Logistic regression seems to be more viable since it has a higher chance of prediciting more or less chance of having a heart attack compared to the decision tree method. Finally, we see that the predictors that show the most influence  to our independant variable 'output' is sex, cp, trtbps, chol, thalachh, exng, oldpeak, slp, caa and the thall. Theoretically speaking this makes sense. Factors such as chest pain, cholesterol levels, etc, are related to heart attacks. Some recommendations that will probably improve the performance of the model is having more meaningful predictors in the data set for detecting heart attacks leading to more accuraracy in model performance. 
 
